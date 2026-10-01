@@ -265,6 +265,7 @@ npm run dev
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | `python3: command not found` / `python no se reconoce` | Python no está instalado o no está en el PATH | Instálalo (paso 0). En Windows usa `python` en lugar de `python3` |
+| `No time zone found with key America/New_York` | Windows no trae la base de datos de zonas horarias | Vuelve a ejecutar `pip install -r requirements.txt` (instala `tzdata`) |
 | `ModuleNotFoundError: No module named 'flask'` | El entorno virtual no está activo | Activa `.venv` (paso 2) y vuelve a ejecutar |
 | `Address already in use` en el puerto 5050 | Otro programa usa ese puerto | Cierra ese programa, o usa otro puerto: `API_PORT=5051 python -m backend.app` en la terminal 1 y `API_PORT=5051 npm run dev` en la terminal 2 (en Windows: `$env:API_PORT=5051` antes de cada comando) |
 | No puedo iniciar sesión con las credenciales de prueba | La API no está encendida, o la pantalla habla con otro programa | Comprueba que http://127.0.0.1:5050/api/leads responde `{"error": "Sign in to continue."}`. Si la base de datos viene de una versión anterior, reiníciala con `python -m backend.seed --reset` |

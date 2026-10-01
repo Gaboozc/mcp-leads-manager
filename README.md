@@ -9,6 +9,8 @@ Internal tool for a continuing-education school. A marketing operator signs in e
 
 The full step-by-step design, with the comparison against Close, Folk, Attio and LeadSquared, is in [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 
+**Guía paso a paso para levantar el proyecto (en español): [`SETUP.md`](SETUP.md).**
+
 ---
 
 ## Part 1 — The base

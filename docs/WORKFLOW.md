@@ -1,6 +1,6 @@
 # Workflow Design — Leads Inbox + «Log contact»
 
-> Design document — **v3**. Status: **draft for review — nothing is implemented yet.**
+> Design document — **v3**. Status: **implemented** (see README for how to run it).
 > v3 changes: timezone fixed to Miami (US Eastern), whole UI and MCP in English, and the feature now works on **every available contact channel** (phone *and* email) — a lead is only given up when no way to reach it is left.
 
 ---
@@ -138,7 +138,7 @@ Telephony states (dialing, active call, hang-up) are **not** detected — no sof
 
 ### 5.3 Operator workflow — step by step
 1. **Queue focused.** Inbox opens with the top row focused. `↑/↓` or `J/K` move focus.
-2. **One-click contact.** The row shows the lead's **preferred channel**: phone link if valid, otherwise email link. Click it (or `Enter`) → opens `tel:` or `mailto:` → the row **expands in place** with the outcome bar. A small toggle (📞 / ✉️) switches channel when both are valid. `1–5` work directly on a focused row too.
+2. **One-click contact.** The row shows the lead's **preferred channel**: phone link if valid, otherwise email link. Click it (or `Enter`) → opens `tel:` or `mailto:`. The **focused row is always expanded in place** with the outcome bar, so there is no extra step between calling and logging. A small toggle (📞 / ✉️) switches channel when both are valid. `1–5` work directly on a focused row too.
 3. **Outcome bar** — five flat buttons, no dropdown, colour + icon + key hint. Labels adapt to the channel; the stored outcome is the same:
 
    | Key | Outcome | Phone label | Email label | Extra field |
@@ -154,7 +154,7 @@ Telephony states (dialing, active call, hang-up) are **not** detected — no sof
 6. **Channel fallback is visible.** «Wrong number» on a lead with a valid email → the row does **not** leave the queue: it flips to the email channel with a short line «Wrong number · email {email} instead».
 7. **If the server rejects**, the row slides back with the plain-language error; nothing typed is lost.
 8. **No auto-dial.** Auto-advance only focuses the next lead.
-9. Clicking the name opens the side panel with history; the outcome bar works there too.
+9. The side panel always shows the focused lead with its full history (read-only); the outcome bar lives in the row. An «All» toggle lists every lead (scheduled and closed too) so any lead can be opened after it leaves today's queue.
 10. **Reload** → the result persists; the panel and `get_lead` show the attempt.
 
 ### 5.4 Server rules (single source of truth)
@@ -268,7 +268,7 @@ Kept from it: **no strategic decisions during the working block** — the server
 
 - **Layout:** top nav (Inbox · Courses · Sign out) → list left (≈60%), detail panel right. Mobile: panel full screen.
 - **Hierarchy:** one primary action per region; outcome buttons each with own colour/icon — never identical buttons.
-- **Keyboard:** `↑/↓` or `J/K` focus · `Enter` contact · `1–5` outcome · `Enter` save note · `Esc` cancel · `Tab` toggles 📞/✉️. Key hints as faded badges.
+- **Keyboard:** `↑/↓` or `J/K` focus · `Enter` contact · `1–5` outcome · `Enter` save note · `Esc` cancel · `C` toggles 📞/✉️ (Tab is left for normal focus navigation). Key hints as faded badges.
 - **No dropdowns** in the loop. **No blocking spinners**: optimistic update, rollback on error.
 - **Motion:** row slide-out 150 ms; respects `prefers-reduced-motion`.
 - **Cursors:** `pointer` on clickable; `not-allowed` on disabled controls (closed lead, invalid channel toggle); `default` on non-actionable rows; `text` in inputs.

@@ -110,6 +110,8 @@ Abre **http://localhost:5173** en el navegador.
 |---|---|
 | `operator@school.test` | `demo1234` |
 
+Más detalle sobre el inicio de sesión, los mensajes posibles y la duración de la sesión en [`LOGIN.md`](LOGIN.md).
+
 Verás la bandeja con los leads de hoy. Para probar rápido:
 
 - `↑` / `↓` cambian de lead.

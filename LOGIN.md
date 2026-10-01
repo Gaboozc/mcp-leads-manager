@@ -27,8 +27,15 @@ Este usuario se crea automáticamente la primera vez que arranca la API. No hay 
 |---|---|---|
 | Entras a la bandeja | Todo bien | Empieza a trabajar los leads |
 | *Wrong email or password.* | El email o la contraseña no coinciden | Revisa que sean exactamente los de la tabla |
-| *Can't reach the server. Check that the API is running.* | La API no está encendida | Levántala con `python -m backend.app` |
+| *Can't reach the API. Check that it's running…* | La API no está encendida, o no responde en el puerto 5050 | Levántala con `python -m backend.app` y comprueba que http://127.0.0.1:5050/api/leads responde |
 | *Your session expired. Sign in again.* | Pasaron más de 8 horas o la API se reinició | Vuelve a iniciar sesión |
+
+Si aun así no puedes entrar:
+
+1. Detén la API (`Ctrl + C`).
+2. Reinicia la base de datos: `python -m backend.seed --reset` (vuelve a crear el usuario de prueba).
+3. Levanta la API otra vez: `python -m backend.app`.
+4. Recarga la pantalla y vuelve a intentarlo.
 
 ---
 

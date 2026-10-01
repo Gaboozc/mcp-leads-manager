@@ -14,6 +14,9 @@ APP_TZ = os.environ.get("APP_TZ", "America/New_York")
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "dev-only-change-me-in-production-32b")
 JWT_HOURS = int(os.environ.get("JWT_HOURS", "8"))
 
+# 5000 is avoided on purpose: macOS uses it for AirPlay Receiver.
+API_PORT = int(os.environ.get("API_PORT", "5050"))
+
 TEST_USER_EMAIL = "operator@school.test"
 TEST_USER_PASSWORD = "demo1234"
 TEST_USER_NAME = "Operator"

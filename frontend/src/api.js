@@ -37,11 +37,13 @@ export async function api(path, { method = "GET", body } = {}) {
   try {
     res = await fetch(`/api${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   } catch {
-    throw new ApiError("Can't reach the server. Check that the API is running.", 0);
+    throw new ApiError("Can't reach the API. Check that it's running (python -m backend.app) on port 5050.", 0);
   }
-  const data = await res.json().catch(() => ({}));
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const message = data.error || "Something went wrong. Try again.";
+    // No JSON error from our API: it's down, or another program answered on its port.
+    const message =
+      data?.error || "Can't reach the API. Check that it's running (python -m backend.app) on port 5050.";
     if (res.status === 401 && path !== "/auth/login") onUnauthorized(message);
     throw new ApiError(message, res.status);
   }

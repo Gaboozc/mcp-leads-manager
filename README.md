@@ -26,7 +26,7 @@ The full step-by-step design, with the comparison against Close, Folk, Attio and
 python3 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python -m backend.app                # http://127.0.0.1:5000
+python -m backend.app                # http://127.0.0.1:5050
 ```
 
 On first start the API creates `backend/leads.db` and seeds the day-1 data. To start over (dates are relative to the moment you seed, so "today" leads are today):
@@ -40,7 +40,7 @@ python -m backend.seed --reset
 ```bash
 cd frontend
 npm install
-npm run dev                          # http://localhost:5173  (proxies /api to :5000)
+npm run dev                          # http://localhost:5173  (proxies /api to :5050)
 ```
 
 ### 3. Test user

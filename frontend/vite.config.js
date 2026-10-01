@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
-    proxy: { "/api": "http://127.0.0.1:5000" },
+    // Must match the API port (backend/config.py → API_PORT).
+    proxy: { "/api": `http://127.0.0.1:${process.env.API_PORT || 5050}` },
   },
 });

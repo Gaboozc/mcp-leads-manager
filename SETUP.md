@@ -71,12 +71,12 @@ python -m backend.app
 Deberías ver algo así:
 
 ```
- * Running on http://127.0.0.1:5000
+ * Running on http://127.0.0.1:5050
 ```
 
 La primera vez, la API **crea sola la base de datos** (`backend/leads.db`) y carga los datos de ejemplo: el usuario de prueba, 3 cursos y 15 leads.
 
-**Comprobación:** abre http://127.0.0.1:5000/api/leads en el navegador. Debe responder `{"error": "Sign in to continue."}`. Eso significa que la API funciona y que pide iniciar sesión.
+**Comprobación:** abre http://127.0.0.1:5050/api/leads en el navegador. Debe responder `{"error": "Sign in to continue."}`. Eso significa que la API funciona y que pide iniciar sesión.
 
 **Deja esta terminal abierta.** Si la cierras, la API se apaga.
 
@@ -266,7 +266,8 @@ npm run dev
 |---|---|---|
 | `python3: command not found` / `python no se reconoce` | Python no está instalado o no está en el PATH | Instálalo (paso 0). En Windows usa `python` en lugar de `python3` |
 | `ModuleNotFoundError: No module named 'flask'` | El entorno virtual no está activo | Activa `.venv` (paso 2) y vuelve a ejecutar |
-| `Address already in use` en el puerto 5000 | Otro programa usa ese puerto (en macOS suele ser *AirPlay Receiver*) | Desactiva AirPlay Receiver en Ajustes del Sistema → General → AirDrop y Handoff, o cierra el otro programa |
+| `Address already in use` en el puerto 5050 | Otro programa usa ese puerto | Cierra ese programa, o usa otro puerto: `API_PORT=5051 python -m backend.app` en la terminal 1 y `API_PORT=5051 npm run dev` en la terminal 2 (en Windows: `$env:API_PORT=5051` antes de cada comando) |
+| No puedo iniciar sesión con las credenciales de prueba | La API no está encendida, o la pantalla habla con otro programa | Comprueba que http://127.0.0.1:5050/api/leads responde `{"error": "Sign in to continue."}`. Si la base de datos viene de una versión anterior, reiníciala con `python -m backend.seed --reset` |
 | La pantalla dice *"Can't reach the server"* | La API no está encendida | Levanta la API (paso 3) en otra terminal |
 | La pantalla dice *"Your session expired"* | El token caducó (dura 8 h) o la API se reinició con otra clave | Vuelve a iniciar sesión |
 | `npm: command not found` | Node.js no está instalado | Instálalo (paso 0) |
@@ -287,7 +288,7 @@ pip install -r requirements.txt
 (cd frontend && npm install)
 
 # Cada vez
-python -m backend.app              # terminal 1 → API en :5000
+python -m backend.app              # terminal 1 → API en :5050
 cd frontend && npm run dev         # terminal 2 → http://localhost:5173
 
 # Entrar con operator@school.test / demo1234

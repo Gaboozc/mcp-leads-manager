@@ -154,7 +154,7 @@ Telephony states (dialing, active call, hang-up) are **not** detected — no sof
 6. **Channel fallback is visible.** «Wrong number» on a lead with a valid email → the row does **not** leave the queue: it flips to the email channel with a short line «Wrong number · email {email} instead».
 7. **If the server rejects**, the row slides back with the plain-language error; nothing typed is lost.
 8. **No auto-dial.** Auto-advance only focuses the next lead.
-9. The side panel always shows the focused lead with its full history (read-only); the outcome bar lives in the row. An «All» toggle lists every lead (scheduled and closed too) so any lead can be opened after it leaves today's queue.
+9. The side panel always shows the focused lead with its full history (read-only); the outcome bar lives in the row. Two tabs with counters sit above the list: **To contact** (today's queue) and **Contacted** (every lead reached at least once; untouched leads never appear there), so any lead can be opened after it leaves today's queue. «Contacted» rows are read-only, coloured by their last outcome, show the arrival and contact dates, and can be filtered by date (Today · Yesterday · Last 7 days · All time · a specific day), by contact date or by arrival date. The confirmation after saving has a «View» link to that lead in «Contacted».
 10. **Reload** → the result persists; the panel and `get_lead` show the attempt.
 
 ### 5.4 Server rules (single source of truth)
@@ -269,6 +269,7 @@ Kept from it: **no strategic decisions during the working block** — the server
 - **Layout:** top nav (Inbox · Courses · Sign out) → list left (≈60%), detail panel right. Mobile: panel full screen.
 - **Hierarchy:** one primary action per region; outcome buttons each with own colour/icon — never identical buttons.
 - **Keyboard:** `↑/↓` or `J/K` focus · `Enter` contact · `1–5` outcome · `Enter` save note · `Esc` cancel · `C` toggles 📞/✉️ (Tab is left for normal focus navigation). Key hints as faded badges.
+- **Outcome colours** are one system: the same colour per outcome on the buttons, the row chips, the left bar of «Contacted» rows and the history dots — grey no answer · amber call back/follow up · green interested · rose not interested · black wrong number/bounced. The word always accompanies the colour.
 - **No dropdowns** in the loop. **No blocking spinners**: optimistic update, rollback on error.
 - **Motion:** row slide-out 150 ms; respects `prefers-reduced-motion`.
 - **Cursors:** `pointer` on clickable; `not-allowed` on disabled controls (closed lead, invalid channel toggle); `default` on non-actionable rows; `text` in inputs.

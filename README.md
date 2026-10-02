@@ -76,7 +76,8 @@ The draft course does not accept new leads: `POST /api/leads` (which stands in f
 |---|---|---|
 | `POST` | `/api/auth/login` | `{email, password}` → `{token}` |
 | `GET` | `/api/courses` | Courses with status and open leads |
-| `GET` | `/api/leads` | Today's queue (`?scope=all` for every lead) |
+| `GET` | `/api/leads` | Today's queue (to contact) |
+| `GET` | `/api/leads?scope=contacted&from=&to=&by=contact\|arrival` | Leads already contacted, filtered by contact or arrival date |
 | `GET` | `/api/leads/{id}` | One lead with history |
 | `POST` | `/api/leads/{id}/contacts` | **The invented feature** (see below) |
 | `POST` | `/api/leads` | Intake, simulates the landing form |
@@ -195,9 +196,15 @@ Both checks were run with **Claude Desktop** as the MCP client (any MCP client w
 >
 > Next up is Marta Ruiz (#3, Intro to Python). She's email only, at marta.ruiz@mail.com.
 
-2. Refresh the inbox: the counter shows **13 to contact today** and Luis is no longer in *Today*. Leads that leave today's queue are kept under **All** with their state — Luis shows *Scheduled · back on Fri, Oct 9* (logged by the assistant) and Ana *Scheduled · back on Fri, Oct 2* (logged from the screen in Check 1):
+2. Refresh the inbox: the counter shows **13 to contact today** and Luis is no longer in *Today*. Leads that leave today's queue are kept with their state (at the time of the check this view was called **All**; it is now the **Contacted** tab, see below) — Luis shows *Scheduled · back on Fri, Oct 9* (logged by the assistant) and Ana *Scheduled · back on Fri, Oct 2* (logged from the screen in Check 1):
 
 ![Both checks in the All view](docs/img/checks-all-view.png)
+
+### Following up on what was done: the «Contacted» tab
+
+The inbox has two tabs with counters: **To contact** (today's queue, where the outcome bar lives) and **Contacted** (every lead that was reached at least once — untouched leads never show up there). In «Contacted» each row has the colour of its last outcome — the same colours as the buttons: grey *no answer*, amber *call back*, green *interested*, rose *not interested*, black *wrong number / bounced* — next to the word and what happens next («Call back · Fri, Oct 9», «Interested · closed as a win»), plus both dates: when the lead arrived and when it was contacted. A date filter (Today, Yesterday, Last 7 days, All time or a specific day) works **by contact date** or **by arrival date**. After logging an outcome, the confirmation has a «View» link that opens the lead there.
+
+![Contacted tab](docs/img/contacted-tab.png)
 
 **Bonus — channel fallback.** Asking the assistant to log *wrong number* for Jorge Diaz returns *Saved. Wrong number for Jorge Diaz. Still in today's queue — email jorge.diaz@mail.com instead.* — and on the screen his phone is struck through and the row now offers the email outcomes:
 

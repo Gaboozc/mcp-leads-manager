@@ -333,7 +333,7 @@ export default function Inbox() {
             <button className={tab(view === "contacted")} onClick={() => setView("contacted")}>
               Contacted
               <span className={count(view === "contacted")} title="Contacted today">
-                {data ? data.contacted_today : "–"}
+                {data?.contacted_today ?? "–"}
               </span>
             </button>
           </nav>

@@ -4,6 +4,7 @@ import { outcomeSummary } from "../lib/outcomes.js";
 // Read-only row for the «Contacted» tab: colour bar + outcome word + both dates.
 const ContactedRow = forwardRef(function ContactedRow({ lead, focused, onFocus }, ref) {
   const s = outcomeSummary(lead);
+  if (!s) return null; // never contacted: belongs to «To contact», not here
   return (
     <li
       ref={ref}

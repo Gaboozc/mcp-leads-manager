@@ -172,49 +172,32 @@ Same fields, same validations, same messages, same effect on the database. One l
 
 **Why this one.** It removes the most steps from the real 9:00 job: one key per lead instead of opening a record, writing a note and setting a reminder; the next step is decided by rules instead of memory; and no lead is lost just because one channel failed. It's the execution loop that tools like Close are known for, without needing a dialer.
 
+Both checks were run with **Claude Desktop** as the MCP client (any MCP client works the same way), with the API and the screens running on the same machine. The answers below are the assistant's real replies, pasted verbatim.
+
 ### Check 1 — from the screen to the assistant
 
-1. In the inbox, on **Ana Lopez** (Certified Nursing Assistant), press `1` (*No answer*). The row leaves today's queue.
-2. In Cursor, ask: *"How is Ana Lopez doing — the nursing lead?"* The assistant calls `get_lead` and gets:
-
-```
-Ana Lopez (#1) — Scheduled · back on Fri, Oct 2
-In today's queue: no
-Phone: 305-555-0142 · Email: ana.lopez@mail.com
-Course: Certified Nursing Assistant (Health)
-Arrived: 26 min ago
-Also asked about: Intro to Python
-Attempts (newest first):
-- Oct 1, 6:08 PM · phone · No answer · next: Friday, Oct 2
-```
+1. In the inbox, on **Ana Lopez** (Certified Nursing Assistant), click **No answer**. The row leaves today's queue and the counter drops to 14.
+2. In a new assistant chat, ask: *"How is Ana Lopez doing? The nursing lead."* The assistant calls `get_lead`.
 
 **Assistant's answer:**
 
-> _Paste here the assistant's reply from Cursor._
+> Ana Lopez (#1, Certified Nursing Assistant) is scheduled for a retry tomorrow, Friday Oct 2, so she's not in today's queue. Her lead came in about 40 minutes ago, and there's been one attempt so far: a call at 9:17 PM tonight that went unanswered. Her contact details are phone 305-555-0142 and email ana.lopez@mail.com.
+>
+> There's also a second Ana Lopez entry, #6, for Intro to Python. It uses the same phone number, arrived yesterday, and is still sitting as "New" in today's queue. Lead #1 also notes that she asked about Intro to Python, so #6 is probably the same person. If that's right, calling #6 today would mean contacting her twice: once today and again tomorrow. You might want to merge the two entries or skip #6 and handle both courses in tomorrow's call.
 
 ### Check 2 — from the assistant to the screen
 
-1. In Cursor, ask: *"I called Emily Carter, she asked me to call back on Friday the 9th after 6 pm."* The assistant calls `log_contact(lead_id=5, outcome="follow_up", follow_up_on="2026-10-09", note="prefers after 6 pm")` and gets:
-
-```
-Saved. Emily Carter: call back on Friday, Oct 9. Removed from today's queue.
-
-Emily Carter (#5) — Scheduled · back on Fri, Oct 9
-In today's queue: no
-Phone: 954-555-0123 · Email: emily.carter@mail.com
-Course: Intro to Python (Technology)
-Arrived: 3 h ago
-Attempts (newest first):
-- Oct 1, 6:09 PM · phone · Call back · next: Friday, Oct 9 · "prefers after 6 pm"
-```
+1. In a new assistant chat, write: *"I called Luis Perez, he asked me to call him back on Friday, October 9 after 6 pm."* The assistant calls `log_contact` (outcome `follow_up`, date `2026-10-09`, note).
 
 **Assistant's answer:**
 
-> _Paste here the assistant's reply from Cursor._
+> Logged. Luis Perez (Intro to Python) is scheduled for a callback on Friday, Oct 9, with a note that he asked for a call after 6 pm, and he's off today's queue.
+>
+> Next up is Marta Ruiz (#3, Intro to Python). She's email only, at marta.ruiz@mail.com.
 
-2. Refresh the inbox: Emily is no longer in *Today*. Under *All* she shows *Scheduled · back on Fri, Oct 9* and the attempt with the note:
+2. Refresh the inbox: the counter shows **13 to contact today** and Luis is no longer in *Today*. Leads that leave today's queue are kept under **All** with their state — Luis shows *Scheduled · back on Fri, Oct 9* (logged by the assistant) and Ana *Scheduled · back on Fri, Oct 2* (logged from the screen in Check 1):
 
-![Check 2](docs/img/check-b-assistant-to-screen.png)
+![Both checks in the All view](docs/img/checks-all-view.png)
 
 **Bonus — channel fallback.** Asking the assistant to log *wrong number* for Jorge Diaz returns *Saved. Wrong number for Jorge Diaz. Still in today's queue — email jorge.diaz@mail.com instead.* — and on the screen his phone is struck through and the row now offers the email outcomes:
 

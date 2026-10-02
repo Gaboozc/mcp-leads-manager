@@ -202,6 +202,38 @@ Después refresca la bandeja en el navegador: verás el mismo resultado.
 
 > **Otros clientes MCP:** Claude Desktop y otros usan el mismo bloque `mcpServers` en su propio archivo de configuración.
 
+### 6.4b Alternativa: Claude Desktop (sin Cursor)
+
+El brief acepta «Cursor u otro cliente MCP». Con Claude Desktop:
+
+1. Abre **Claude Desktop → Settings → Developer → Edit Config**. Se abre `claude_desktop_config.json`.
+2. Agrega el bloque `mcpServers` **al principio**, sin borrar lo que ya tenga el archivo. Ejemplo en Windows:
+   ```json
+   {
+     "mcpServers": {
+       "leads-inbox": {
+         "command": "C:\\Users\\tu-usuario\\mcp-leads-manager\\.venv\\Scripts\\python.exe",
+         "args": ["C:\\Users\\tu-usuario\\mcp-leads-manager\\mcp_server\\server.py"],
+         "env": {
+           "DATABASE_URL": "sqlite:///C:/Users/tu-usuario/mcp-leads-manager/backend/leads.db",
+           "APP_TZ": "America/New_York",
+           "OPERATOR_EMAIL": "operator@school.test"
+         }
+       }
+     },
+     "...el resto de tu configuración...": "..."
+   }
+   ```
+   Comprueba que el JSON sea válido (por ejemplo en https://jsonlint.com).
+3. **Cierra Claude Desktop por completo** (icono junto al reloj → *Quit*) y vuelve a abrirlo.
+4. En **Settings → Developer**, «leads-inbox» debe aparecer como **Running**.
+
+Consejos para las comprobaciones:
+
+- Abre un **chat nuevo** para cada comprobación; en un chat viejo el asistente compara con lo que leyó antes.
+- `log_contact` escribe en la base de datos, así que Claude Desktop pide permiso: apruébalo enseguida o la llamada vence.
+- Mientras usas el asistente, no escribas en la pestaña de la bandeja: los números `1`–`5` son atajos que registran resultados.
+
 ### 6.5 Probar el MCP sin Cursor (opcional)
 
 Con el **MCP Inspector** puedes invocar las tools a mano desde el navegador:

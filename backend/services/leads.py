@@ -129,11 +129,18 @@ def _attempt_day(a: ContactAttempt) -> date:
     return timeutil.to_local(a.created_at).date()
 
 
+def _undo_allowed(a: ContactAttempt) -> bool:
+    age = timeutil.now_local() - timeutil.to_local(a.created_at)
+    return a.prev_state is not None and age <= timedelta(minutes=UNDO_MINUTES)
+
+
 def _last_attempt_dict(lead: Lead) -> dict | None:
     a = _last_attempt(lead)
     if a is None:
         return None
     return {
+        "id": a.id,
+        "can_undo": _undo_allowed(a),
         "outcome": a.outcome,
         "outcome_label": OUTCOME_LABELS[a.channel][a.outcome],
         "channel": a.channel,
@@ -397,8 +404,7 @@ def undo_contact(session: Session, lead_id: int, attempt_id: int) -> dict:
         raise Conflict("Only the last attempt on a lead can be undone.")
     if last.prev_state is None:
         raise Conflict("This attempt can't be undone.")
-    age = timeutil.now_local() - timeutil.to_local(last.created_at)
-    if age > timedelta(minutes=UNDO_MINUTES):
+    if not _undo_allowed(last):
         raise Conflict(f"It's too late to undo this attempt (more than {UNDO_MINUTES} minutes ago).")
 
     prev = json.loads(last.prev_state)

@@ -150,7 +150,7 @@ Telephony states (dialing, active call, hang-up) are **not** detected — no sof
    | `5` | `bad_contact` | ⚫ Wrong number | ⚫ Bounced | — |
 
 4. **Conditional micro-note.** Only `2` and `3` reveal an inline field; `Enter` saves, `Esc` cancels. `1`, `4`, `5` save with one keypress.
-5. **Optimistic save.** The row slides out (150 ms), the counter drops, the next row is focused — no blocking spinner. `POST /api/leads/{id}/contacts` runs in the background. The confirmation offers **Undo** (button or `Ctrl+Z`, 8 s on screen): `DELETE /api/leads/{id}/contacts/{attempt_id}` removes that attempt and restores the lead from the `prev_state` saved with it (last attempt only, within 10 minutes).
+5. **Optimistic save.** The row slides out (150 ms), the counter drops, the next row is focused — no blocking spinner. `POST /api/leads/{id}/contacts` runs in the background. The confirmation offers **Undo** (button or `Ctrl+Z`, 8 s on screen): `DELETE /api/leads/{id}/contacts/{attempt_id}` removes that attempt and restores the lead from the `prev_state` saved with it (last attempt only, within 10 minutes). The «Contacted» tab shows the same Undo on each row whose last attempt can still be undone (`last_attempt.can_undo`).
 6. **Channel fallback is visible.** «Wrong number» on a lead with a valid email → the row does **not** leave the queue: it flips to the email channel with a short line «Wrong number · email {email} instead».
 7. **If the server rejects**, the row slides back with the plain-language error; nothing typed is lost.
 8. **No auto-dial.** Auto-advance only focuses the next lead.

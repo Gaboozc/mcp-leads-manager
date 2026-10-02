@@ -156,7 +156,7 @@ If something fails the tool says what happened in plain words, e.g. *There is no
 | `4` | Not interested | Not interested | Closes the lead |
 | `5` | Wrong number | Bounced | Marks that channel invalid. **If another channel is left the lead stays in today's queue and switches to it**; otherwise closes as unreachable |
 
-The row slides out immediately and the next lead is focused (the save happens in the background; if the server rejects it, the row comes back with the message). A wrong click or key is not final: the confirmation has an **Undo** button (or `Ctrl+Z`) that deletes that attempt and puts the lead back exactly as it was — each attempt stores the lead's previous state, so the server restores it; only the last attempt of a lead, within 10 minutes. Every attempt is stored and shown in the lead's history. The result survives a reload — it's in the database, not in the browser.
+The row slides out immediately and the next lead is focused (the save happens in the background; if the server rejects it, the row comes back with the message). A wrong click or key is not final: the confirmation has an **Undo** button (or `Ctrl+Z`) that deletes that attempt and puts the lead back exactly as it was — each attempt stores the lead's previous state, so the server restores it; only the last attempt of a lead, within 10 minutes. The same Undo appears on the row in the «Contacted» tab while it is still allowed. Every attempt is stored and shown in the lead's history. The result survives a reload — it's in the database, not in the browser.
 
 It's one job: it starts and ends in the inbox, with no extra menu or screen. Leads without a phone are worked by email in the same queue — as long as there is a way to reach someone, the lead stays alive.
 

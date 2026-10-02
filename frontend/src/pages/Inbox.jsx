@@ -255,26 +255,31 @@ export default function Inbox() {
 
   // --- Undo the last saved outcome (wrong click or key) ------------------------------------
 
-  const undo = useCallback(async () => {
-    if (!toast?.attemptId) return;
-    const { leadId, attemptId } = toast;
+  const undo = useCallback(async (leadId, attemptId) => {
+    if (!leadId || !attemptId) return;
     setToast(null);
     try {
       const res = await api(`/leads/${leadId}/contacts/${attemptId}`, { method: "DELETE" });
       const d = await loadQueue();
-      if (view === "contacted") await loadContacted();
-      if (d && d.leads.some((l) => l.id === leadId)) setFocusedId(leadId);
+      if (view === "contacted") {
+        // The lead may have left this list (if that was its only attempt).
+        const c = await loadContacted();
+        if (c) pickFocus(c.leads);
+      } else if (d && d.leads.some((l) => l.id === leadId)) {
+        setFocusedId(leadId);
+      }
       if (focusedId === leadId) setDetail(res.lead);
-      setToast({ text: res.message, leadId });
+      setToast({ text: res.message, leadId, undone: true });
     } catch (e) {
       setToast({ text: e.message, leadId, error: true });
     }
-  }, [toast, view, focusedId, loadQueue, loadContacted]);
+  }, [view, focusedId, loadQueue, loadContacted]);
+  const undoToast = useCallback(() => toast?.attemptId && undo(toast.leadId, toast.attemptId), [toast, undo]);
 
   // --- Keyboard ---------------------------------------------------------------------------
 
   const keyState = useRef();
-  keyState.current = { focused, move, pick, toggleChannel, channelOf, pending, view, undo };
+  keyState.current = { focused, move, pick, toggleChannel, channelOf, pending, view, undo: undoToast };
 
   useEffect(() => {
     function onKey(e) {
@@ -378,14 +383,14 @@ export default function Inbox() {
               {toast.text}{" "}
               {toast.attemptId && (
                 <button
-                  onClick={undo}
+                  onClick={undoToast}
                   title="Undo (Ctrl+Z)"
                   className="pressable ml-1 rounded-md border border-emerald-300 bg-white px-2 py-0.5 font-medium text-emerald-800 hover:bg-emerald-50"
                 >
                   Undo
                 </button>
               )}
-              {!toast.error && (
+              {!toast.error && !toast.undone && (
                 <button
                   onClick={() => openContacted(toast.leadId)}
                   className="pressable ml-1 rounded px-1 font-medium text-emerald-800 underline underline-offset-2 hover:bg-emerald-50"
@@ -422,6 +427,7 @@ export default function Inbox() {
                     focus(lead.id);
                     if (window.innerWidth < 1024) setMobileDetail(true);
                   }}
+                  onUndo={undo}
                 />
               ))}
             </ul>

@@ -52,3 +52,14 @@ def test_undo_api(client, auth, session):
     assert res.get_json()["lead"]["status"] == "open"
     again = client.delete(f"/api/leads/{lead.id}/contacts/{attempt_id}", headers=auth)
     assert again.status_code == 409
+
+
+def test_can_undo_flag(session, user_id, monkeypatch, fixed_clock):
+    from backend import timeutil
+
+    lead = lead_by(session, "Carlos Mendez")
+    r = svc.log_contact(session, lead.id, "no_response", user_id)
+    assert r["lead"]["last_attempt"]["can_undo"] is True
+    assert r["lead"]["last_attempt"]["id"] == r["attempt"]["id"]
+    monkeypatch.setattr(timeutil, "now_local", lambda: fixed_clock + timedelta(minutes=11))
+    assert svc.get_lead(session, lead.id)["last_attempt"]["can_undo"] is False

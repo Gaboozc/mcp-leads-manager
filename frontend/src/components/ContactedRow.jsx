@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { outcomeSummary } from "../lib/outcomes.js";
 
 // Read-only row for the «Contacted» tab: colour bar + outcome word + both dates.
-const ContactedRow = forwardRef(function ContactedRow({ lead, focused, onFocus }, ref) {
+const ContactedRow = forwardRef(function ContactedRow({ lead, focused, onFocus, onUndo }, ref) {
   const s = outcomeSummary(lead);
   if (!s) return null; // never contacted: belongs to «To contact», not here
   return (
@@ -25,9 +25,24 @@ const ContactedRow = forwardRef(function ContactedRow({ lead, focused, onFocus }
             {lead.last_attempt.channel === "phone" ? "phone" : "email"}
           </p>
         </div>
-        <span className={`self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium sm:self-auto ${s.colors.chip}`}>
-          {s.label} · {s.detail}
-        </span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${s.colors.chip}`}>
+            {s.label} · {s.detail}
+          </span>
+          {lead.last_attempt.can_undo && (
+            <button
+              type="button"
+              title="Undo this attempt (available for 10 minutes)"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUndo(lead.id, lead.last_attempt.id);
+              }}
+              className="pressable rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
+            >
+              Undo
+            </button>
+          )}
+        </div>
       </div>
     </li>
   );

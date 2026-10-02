@@ -53,7 +53,7 @@ Cursor ──stdio────► MCP server ────┘
 - `leads.closed_reason` — NULL | `interested` | `not_interested` | `no_response` | `unreachable`
 - `leads.phone_invalid` — BOOL (default false), set by «Wrong number»
 - `leads.email_invalid` — BOOL (default false), set by «Bounced»
-- `contact_attempts(id, lead_id FK, channel: phone|email, outcome, note NULL, follow_up_on NULL, created_at, user_id FK)`
+- `contact_attempts(id, lead_id FK, channel: phone|email, outcome, note NULL, follow_up_on NULL, created_at, user_id FK, prev_state NULL)` — `prev_state` is the lead's state before the attempt, used by Undo
 
 Derived (not stored): available channels, preferred channel (phone if valid, else email), attempts count, last outcome, display label (New / Retry / Follow up / Closed).
 
@@ -150,7 +150,7 @@ Telephony states (dialing, active call, hang-up) are **not** detected — no sof
    | `5` | `bad_contact` | ⚫ Wrong number | ⚫ Bounced | — |
 
 4. **Conditional micro-note.** Only `2` and `3` reveal an inline field; `Enter` saves, `Esc` cancels. `1`, `4`, `5` save with one keypress.
-5. **Optimistic save.** The row slides out (150 ms), the counter drops, the next row is focused — no blocking spinner. `POST /api/leads/{id}/contacts` runs in the background.
+5. **Optimistic save.** The row slides out (150 ms), the counter drops, the next row is focused — no blocking spinner. `POST /api/leads/{id}/contacts` runs in the background. The confirmation offers **Undo** (button or `Ctrl+Z`, 8 s on screen): `DELETE /api/leads/{id}/contacts/{attempt_id}` removes that attempt and restores the lead from the `prev_state` saved with it (last attempt only, within 10 minutes).
 6. **Channel fallback is visible.** «Wrong number» on a lead with a valid email → the row does **not** leave the queue: it flips to the email channel with a short line «Wrong number · email {email} instead».
 7. **If the server rejects**, the row slides back with the plain-language error; nothing typed is lost.
 8. **No auto-dial.** Auto-advance only focuses the next lead.
@@ -298,7 +298,7 @@ README.md            Base setup · MCP in Cursor · «La funcionalidad que inven
 
 ## 8. Out of scope (stated in README)
 - Base: no public site, no user management (single seeded operator), no lead-creation UI.
-- Feature: no undo, no real telephony or email sending (we only open `tel:`/`mailto:`), no auto-dial, no triage step, no US-holiday calendar.
+- Feature: undo limited to the lead's last attempt and 10 minutes, UI only (no MCP tool — the brief allows one third tool); no real telephony or email sending (we only open `tel:`/`mailto:`), no auto-dial, no triage step, no US-holiday calendar.
 
 ## 9. Verification
 - `pytest backend/tests` — each rule in §5.4 (incl. channel fallback and `unreachable`), every validation message, queue order §5.5, timezone edge (23:30 ET), MCP tool and REST route producing identical DB effect.

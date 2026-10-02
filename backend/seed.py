@@ -9,6 +9,8 @@ from datetime import datetime, time, timedelta
 
 from werkzeug.security import generate_password_hash
 
+from sqlalchemy import inspect, text
+
 from backend import config, timeutil
 from backend.db import Base, get_engine, session_scope
 from backend.models import Course, Lead, User
@@ -58,7 +60,13 @@ def _arrival(days_ago: int, minutes_ago: int) -> datetime:
 
 
 def create_schema():
-    Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    # Databases created before «Undo» existed lack this column: add it in place.
+    columns = {c["name"] for c in inspect(engine).get_columns("contact_attempts")}
+    if "prev_state" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE contact_attempts ADD COLUMN prev_state TEXT"))
 
 
 def seed_if_empty() -> bool:

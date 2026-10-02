@@ -48,6 +48,15 @@ def log_contact(lead_id: int):
     return jsonify(result), 201
 
 
+@bp.delete("/<int:lead_id>/contacts/<int:attempt_id>")
+@jwt_required()
+def undo_contact(lead_id: int, attempt_id: int):
+    """Undo the last logged attempt (safety net for a wrong click or key)."""
+    result = leads.undo_contact(db(), lead_id, attempt_id)
+    db().commit()
+    return jsonify(result)
+
+
 @bp.post("")
 def intake():
     """Simulates the course landing form (the public site is out of scope).

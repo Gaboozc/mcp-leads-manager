@@ -70,6 +70,8 @@ class ContactAttempt(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     follow_up_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)  # UTC
+    # How the lead looked before this attempt (JSON), so the operator can undo it.
+    prev_state: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     lead: Mapped[Lead] = relationship(back_populates="attempts")
     user: Mapped[User] = relationship()

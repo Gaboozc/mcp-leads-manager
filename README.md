@@ -80,6 +80,7 @@ The draft course does not accept new leads: `POST /api/leads` (which stands in f
 | `GET` | `/api/leads?scope=contacted&from=&to=&by=contact\|arrival` | Leads already contacted, filtered by contact or arrival date |
 | `GET` | `/api/leads/{id}` | One lead with history |
 | `POST` | `/api/leads/{id}/contacts` | **The invented feature** (see below) |
+| `DELETE` | `/api/leads/{id}/contacts/{attempt_id}` | Undo the lead's last attempt (within 10 minutes) |
 | `POST` | `/api/leads` | Intake, simulates the landing form |
 
 Errors always come back as `{"error": "<plain-language message>"}`.
@@ -133,7 +134,7 @@ If something fails the tool says what happened in plain words, e.g. *There is no
 
 **Base fields** (from the brief): `users(email, name, password_hash)`, `courses(name, slug, area, status)`, `leads(name, email, phone?, course_id, created_at)`. Two leads with the same email are kept as separate rows — the brief doesn't decide whether they are the same person, so the detail only shows a hint («Also asked about …»). Dates are stored in UTC and turned into Miami time for "today", business days and every label.
 
-**Added by the invented feature:** on `leads` — `status` (open/closed), `next_contact_on` (when it comes back to the queue), `closed_reason`, `phone_invalid`, `email_invalid`; and a new table `contact_attempts(lead_id, user_id, channel, outcome, note, follow_up_on, created_at)` with one row per attempt.
+**Added by the invented feature:** on `leads` — `status` (open/closed), `next_contact_on` (when it comes back to the queue), `closed_reason`, `phone_invalid`, `email_invalid`; and a new table `contact_attempts(lead_id, user_id, channel, outcome, note, follow_up_on, created_at, prev_state)` with one row per attempt (`prev_state` keeps the lead's state before the attempt, so it can be undone).
 
 ![Sign-in error](docs/img/signin-error.png)
 
@@ -155,7 +156,7 @@ If something fails the tool says what happened in plain words, e.g. *There is no
 | `4` | Not interested | Not interested | Closes the lead |
 | `5` | Wrong number | Bounced | Marks that channel invalid. **If another channel is left the lead stays in today's queue and switches to it**; otherwise closes as unreachable |
 
-The row slides out immediately and the next lead is focused (the save happens in the background; if the server rejects it, the row comes back with the message). Every attempt is stored and shown in the lead's history. The result survives a reload — it's in the database, not in the browser.
+The row slides out immediately and the next lead is focused (the save happens in the background; if the server rejects it, the row comes back with the message). A wrong click or key is not final: the confirmation has an **Undo** button (or `Ctrl+Z`) that deletes that attempt and puts the lead back exactly as it was — each attempt stores the lead's previous state, so the server restores it; only the last attempt of a lead, within 10 minutes. Every attempt is stored and shown in the lead's history. The result survives a reload — it's in the database, not in the browser.
 
 It's one job: it starts and ends in the inbox, with no extra menu or screen. Leads without a phone are worked by email in the same queue — as long as there is a way to reach someone, the lead stays alive.
 
@@ -216,7 +217,7 @@ The inbox has two tabs with counters: **To contact** (today's queue, where the o
 
 **Base:** no public site or landing pages (the intake endpoint stands in for the form); a single seeded operator, no user management.
 
-**Invented feature:** no real telephony or email sending — the row opens `tel:` / `mailto:`; no auto-dial; no undo of a logged attempt; US holidays are not skipped when computing business days.
+**Invented feature:** no real telephony or email sending — the row opens `tel:` / `mailto:`; no auto-dial; undo only works on a lead's last attempt and for 10 minutes; the assistant has no undo tool (the brief allows a single third tool); US holidays are not skipped when computing business days.
 
 ## Project structure
 

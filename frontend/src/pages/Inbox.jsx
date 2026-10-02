@@ -119,7 +119,7 @@ export default function Inbox() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
+    const t = setTimeout(() => setToast(null), toast.attemptId ? 8000 : 4000);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -183,7 +183,7 @@ export default function Inbox() {
           method: "POST",
           body: { outcome, channel, note: extra.note || null, follow_up_on: extra.date || null },
         });
-        setToast({ text: res.message, leadId: lead.id });
+        setToast({ text: res.message, leadId: lead.id, attemptId: res.attempt.id });
         setData(
           (d) =>
             d && {
@@ -253,15 +253,39 @@ export default function Inbox() {
     submit(focused, pending, draft);
   }, [focused, pending, draft, submit]);
 
+  // --- Undo the last saved outcome (wrong click or key) ------------------------------------
+
+  const undo = useCallback(async () => {
+    if (!toast?.attemptId) return;
+    const { leadId, attemptId } = toast;
+    setToast(null);
+    try {
+      const res = await api(`/leads/${leadId}/contacts/${attemptId}`, { method: "DELETE" });
+      const d = await loadQueue();
+      if (view === "contacted") await loadContacted();
+      if (d && d.leads.some((l) => l.id === leadId)) setFocusedId(leadId);
+      if (focusedId === leadId) setDetail(res.lead);
+      setToast({ text: res.message, leadId });
+    } catch (e) {
+      setToast({ text: e.message, leadId, error: true });
+    }
+  }, [toast, view, focusedId, loadQueue, loadContacted]);
+
   // --- Keyboard ---------------------------------------------------------------------------
 
   const keyState = useRef();
-  keyState.current = { focused, move, pick, toggleChannel, channelOf, pending, view };
+  keyState.current = { focused, move, pick, toggleChannel, channelOf, pending, view, undo };
 
   useEffect(() => {
     function onKey(e) {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
-      const { focused, move, pick, toggleChannel, channelOf, pending, view } = keyState.current;
+      if (isTyping(e.target)) return;
+      const { focused, move, pick, toggleChannel, channelOf, pending, view, undo } = keyState.current;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "ArrowDown" || e.key === "j") {
         e.preventDefault();
         move(1);
@@ -347,16 +371,28 @@ export default function Inbox() {
           <div className="h-3" />
         )}
 
-        <div className="min-h-5 px-4 pb-2 sm:px-5" aria-live="polite">
+        <div className="flex min-h-8 items-center px-4 pb-2 sm:px-5" aria-live="polite">
           {toast && (
-            <p className="animate-fade-in text-sm text-emerald-700">
-              ✓ {toast.text}{" "}
-              <button
-                onClick={() => openContacted(toast.leadId)}
-                className="pressable rounded px-1 font-medium text-emerald-800 underline underline-offset-2 hover:bg-emerald-50"
-              >
-                View
-              </button>
+            <p className={`animate-fade-in text-sm ${toast.error ? "text-rose-600" : "text-emerald-700"}`}>
+              {toast.error ? "" : "✓ "}
+              {toast.text}{" "}
+              {toast.attemptId && (
+                <button
+                  onClick={undo}
+                  title="Undo (Ctrl+Z)"
+                  className="pressable ml-1 rounded-md border border-emerald-300 bg-white px-2 py-0.5 font-medium text-emerald-800 hover:bg-emerald-50"
+                >
+                  Undo
+                </button>
+              )}
+              {!toast.error && (
+                <button
+                  onClick={() => openContacted(toast.leadId)}
+                  className="pressable ml-1 rounded px-1 font-medium text-emerald-800 underline underline-offset-2 hover:bg-emerald-50"
+                >
+                  View
+                </button>
+              )}
             </p>
           )}
         </div>
@@ -447,7 +483,7 @@ export default function Inbox() {
           {view === "today" && leads.length > 0 && (
             <p className="hidden px-5 py-4 text-xs text-zinc-400 md:block">
               <kbd className="font-sans">↑ ↓</kbd> move · <kbd className="font-sans">Enter</kbd> call or email ·{" "}
-              <kbd className="font-sans">1–5</kbd> log outcome · <kbd className="font-sans">C</kbd> switch phone/email
+              <kbd className="font-sans">1–5</kbd> log outcome · <kbd className="font-sans">C</kbd> switch phone/email · <kbd className="font-sans">Ctrl Z</kbd> undo
             </p>
           )}
         </div>

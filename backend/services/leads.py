@@ -4,6 +4,7 @@ This module is the single place where the rules live. The Flask routes and
 the MCP server only call these functions.
 """
 
+import json
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
@@ -18,6 +19,7 @@ CHANNELS = ("phone", "email")
 MAX_NO_RESPONSE = 3
 MAX_FOLLOW_UP_DAYS = 30
 MAX_NOTE = 280
+UNDO_MINUTES = 10
 
 OUTCOME_LABELS = {
     "phone": {
@@ -321,6 +323,15 @@ def log_contact(
 
     label = OUTCOME_LABELS[channel][outcome]
     first = lead.name
+    prev_state = json.dumps(
+        {
+            "status": lead.status,
+            "next_contact_on": lead.next_contact_on.isoformat() if lead.next_contact_on else None,
+            "closed_reason": lead.closed_reason,
+            "phone_invalid": lead.phone_invalid,
+            "email_invalid": lead.email_invalid,
+        }
+    )
 
     if outcome == "no_response":
         tries = sum(1 for a in lead.attempts if a.outcome == "no_response") + 1
@@ -367,6 +378,7 @@ def log_contact(
         note=note,
         follow_up_on=when,
         created_at=timeutil.local_to_utc_naive(timeutil.now_local()),
+        prev_state=prev_state,
     )
     session.add(attempt)
     session.flush()
@@ -374,6 +386,31 @@ def log_contact(
     session.refresh(attempt)
 
     return {"lead": get_lead(session, lead.id), "attempt": attempt_dict(attempt), "message": message}
+
+
+def undo_contact(session: Session, lead_id: int, attempt_id: int) -> dict:
+    """Undo the lead's last attempt: delete it and put the lead back exactly as it
+    was before. Only the most recent attempt, and only for a few minutes."""
+    lead = _load(session, lead_id)
+    last = _last_attempt(lead)
+    if last is None or last.id != attempt_id:
+        raise Conflict("Only the last attempt on a lead can be undone.")
+    if last.prev_state is None:
+        raise Conflict("This attempt can't be undone.")
+    age = timeutil.now_local() - timeutil.to_local(last.created_at)
+    if age > timedelta(minutes=UNDO_MINUTES):
+        raise Conflict(f"It's too late to undo this attempt (more than {UNDO_MINUTES} minutes ago).")
+
+    prev = json.loads(last.prev_state)
+    lead.status = prev["status"]
+    lead.next_contact_on = date.fromisoformat(prev["next_contact_on"]) if prev["next_contact_on"] else None
+    lead.closed_reason = prev["closed_reason"]
+    lead.phone_invalid = prev["phone_invalid"]
+    lead.email_invalid = prev["email_invalid"]
+    session.delete(last)
+    session.flush()
+    session.expire(lead)
+    return {"lead": get_lead(session, lead.id), "message": f"Undone. {lead.name} is back as before."}
 
 
 # --- Intake (simulates the landing form) ------------------------------------------------

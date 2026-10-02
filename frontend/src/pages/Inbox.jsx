@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
 import { contactHref } from "../components/ContactLink.jsx";
+import ContactedFilters, { rangeFor } from "../components/ContactedFilters.jsx";
+import ContactedRow from "../components/ContactedRow.jsx";
 import LeadPanel from "../components/LeadPanel.jsx";
 import LeadRow from "../components/LeadRow.jsx";
 import OutcomeBar from "../components/OutcomeBar.jsx";
@@ -17,9 +19,13 @@ function isTyping(el) {
 
 export default function Inbox() {
   const [params, setParams] = useSearchParams();
-  const view = params.get("view") === "all" ? "all" : "today";
+  const view = params.get("view") === "contacted" ? "contacted" : "today";
+  const range = params.get("range") || "today";
+  const pickedDate = params.get("date");
+  const by = params.get("by") === "arrival" ? "arrival" : "contact";
 
-  const [data, setData] = useState(null); // { leads, count, next_return_label }
+  const [data, setData] = useState(null); // today's queue: { leads, count, contacted_today, next_return_label }
+  const [contacted, setContacted] = useState(null); // { leads, count }
   const [loadError, setLoadError] = useState(null);
   const [focusedId, setFocusedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -33,27 +39,62 @@ export default function Inbox() {
   const [toast, setToast] = useState(null);
   const rowRefs = useRef({});
 
-  const leads = useMemo(() => data?.leads ?? [], [data]);
+  const leads = useMemo(
+    () => (view === "today" ? data?.leads : contacted?.leads) ?? [],
+    [view, data, contacted],
+  );
+  const pendingFocus = useRef(null);
   const focused = leads.find((l) => l.id === focusedId) || null;
   const channelOf = useCallback((lead) => channelOverride[lead.id] || lead.preferred_channel, [channelOverride]);
 
   // --- Loading -------------------------------------------------------------------
 
-  const load = useCallback(async () => {
+  const pickFocus = (list) =>
+    setFocusedId((cur) => {
+      const wanted = pendingFocus.current;
+      pendingFocus.current = null;
+      if (wanted && list.some((l) => l.id === wanted)) return wanted;
+      return list.some((l) => l.id === cur) ? cur : list[0]?.id ?? null;
+    });
+
+  // Today's queue is always loaded: it feeds the «To contact» list and both tab counters.
+  const loadQueue = useCallback(async () => {
     try {
-      const d = await api(view === "all" ? "/leads?scope=all" : "/leads");
+      const d = await api("/leads");
       setData(d);
       setLoadError(null);
-      setFocusedId((cur) => (d.leads.some((l) => l.id === cur) ? cur : d.leads[0]?.id ?? null));
+      return d;
     } catch (e) {
       setLoadError(e.message);
     }
-  }, [view]);
+  }, []);
+
+  const { from, to } = rangeFor(range, pickedDate);
+  const loadContacted = useCallback(async () => {
+    const q = new URLSearchParams({ scope: "contacted", by });
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    try {
+      const d = await api(`/leads?${q}`);
+      setContacted(d);
+      setLoadError(null);
+      return d;
+    } catch (e) {
+      setLoadError(e.message);
+    }
+  }, [from, to, by]);
 
   useEffect(() => {
-    setData(null);
-    load();
-  }, [load]);
+    if (view !== "today") return;
+    loadQueue().then((d) => d && pickFocus(d.leads));
+  }, [view, loadQueue]);
+
+  useEffect(() => {
+    if (view !== "contacted") return;
+    setContacted(null);
+    loadQueue();
+    loadContacted().then((d) => d && pickFocus(d.leads));
+  }, [view, loadQueue, loadContacted]);
 
   const loadDetail = useCallback(async (id) => {
     if (!id) {
@@ -142,7 +183,14 @@ export default function Inbox() {
           method: "POST",
           body: { outcome, channel, note: extra.note || null, follow_up_on: extra.date || null },
         });
-        setToast(res.message);
+        setToast({ text: res.message, leadId: lead.id });
+        setData(
+          (d) =>
+            d && {
+              ...d,
+              contacted_today: d.contacted_today + (lead.last_attempt?.created_on === schoolToday() ? 0 : 1),
+            },
+        );
         setChannelOverride((m) => ({ ...m, [lead.id]: undefined }));
         if (!leavesList) {
           setData((d) => d && { ...d, leads: d.leads.map((l) => (l.id === lead.id ? { ...l, ...res.lead } : l)) });
@@ -177,7 +225,7 @@ export default function Inbox() {
 
   const pick = useCallback(
     (lead, outcomeId) => {
-      if (!lead || lead.status !== "open" || !channelOf(lead)) return;
+      if (view !== "today" || !lead || lead.status !== "open" || !channelOf(lead)) return;
       const o = byId[outcomeId];
       if (!o.needs) {
         submit(lead, outcomeId);
@@ -188,7 +236,7 @@ export default function Inbox() {
       setRowError((m) => ({ ...m, [lead.id]: null }));
       setDraft({ note: "", date: o.needs === "date" ? nextBusinessDay(schoolToday()) : "" });
     },
-    [channelOf, submit],
+    [view, channelOf, submit],
   );
 
   const submitPending = useCallback(() => {
@@ -208,12 +256,12 @@ export default function Inbox() {
   // --- Keyboard ---------------------------------------------------------------------------
 
   const keyState = useRef();
-  keyState.current = { focused, move, pick, toggleChannel, channelOf, pending };
+  keyState.current = { focused, move, pick, toggleChannel, channelOf, pending, view };
 
   useEffect(() => {
     function onKey(e) {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
-      const { focused, move, pick, toggleChannel, channelOf, pending } = keyState.current;
+      const { focused, move, pick, toggleChannel, channelOf, pending, view } = keyState.current;
       if (e.key === "ArrowDown" || e.key === "j") {
         e.preventDefault();
         move(1);
@@ -222,7 +270,7 @@ export default function Inbox() {
         move(-1);
       } else if (e.key === "Escape" && pending) {
         setPending(null);
-      } else if (!focused) {
+      } else if (!focused || view !== "today") {
         return;
       } else if (e.key === "Enter") {
         const href = contactHref(focused, channelOf(focused));
@@ -243,47 +291,107 @@ export default function Inbox() {
 
   // --- Render -----------------------------------------------------------------------------
 
-  const setView = (v) => setParams(v === "all" ? { view: "all" } : {});
+  const setView = (v) => {
+    setPending(null);
+    setParams(v === "contacted" ? { view: "contacted", range, by, ...(pickedDate ? { date: pickedDate } : {}) } : {});
+  };
+  const setFilter = (change) => {
+    const next = { view: "contacted", range, by, date: pickedDate, ...change };
+    setParams(Object.fromEntries(Object.entries(next).filter(([, v]) => v)));
+  };
+  const openContacted = (leadId) => {
+    pendingFocus.current = leadId;
+    setToast(null);
+    setParams({ view: "contacted", range: "today", by: "contact" });
+  };
+
+  const tab = (active) =>
+    `pressable -mb-px flex items-center gap-2 border-b-2 px-1 pb-2.5 text-sm font-medium ${
+      active ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-500 hover:text-zinc-900"
+    }`;
+  const count = (active) =>
+    `rounded-full px-2 py-0.5 text-xs tabular-nums ${active ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-600"}`;
+  const emptyContacted =
+    by === "contact" ? "No one was contacted in this period." : "No contacted leads arrived in this period.";
 
   return (
     <div className="flex h-full">
       <section className={`flex min-w-0 flex-1 flex-col ${mobileDetail ? "hidden lg:flex" : ""}`}>
-        <div className="flex items-end justify-between gap-4 px-4 pb-3 pt-6 sm:px-5">
-          <div>
-            <h1 className="text-xl font-semibold">
-              {view === "today" ? (data ? `${data.count} to contact today` : "Today") : "All leads"}
-            </h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
-              {view === "today" ? "Follow-ups first, then the newest leads." : "Every lead, newest first."}
-            </p>
-          </div>
-          <div className="flex rounded-lg bg-zinc-200/70 p-0.5 text-sm">
-            {[
-              ["today", "Today"],
-              ["all", "All"],
-            ].map(([v, label]) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`pressable rounded-md px-3 py-1 font-medium ${
-                  view === v ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="px-4 pt-6 sm:px-5">
+          <h1 className="text-xl font-semibold">
+            {view === "today" ? (data ? `${data.count} to contact today` : "Today") : "Already contacted"}
+          </h1>
+          <p className="mt-0.5 text-sm text-zinc-500">
+            {view === "today"
+              ? "Follow-ups first, then the newest leads."
+              : "What happened with every lead you reached. Untouched leads stay in To contact."}
+          </p>
+          <nav className="mt-4 flex gap-6 border-b border-zinc-200" aria-label="Inbox views">
+            <button className={tab(view === "today")} onClick={() => setView("today")}>
+              To contact <span className={count(view === "today")}>{data ? data.count : "–"}</span>
+            </button>
+            <button className={tab(view === "contacted")} onClick={() => setView("contacted")}>
+              Contacted
+              <span className={count(view === "contacted")} title="Contacted today">
+                {data ? data.contacted_today : "–"}
+              </span>
+            </button>
+          </nav>
         </div>
 
+        {view === "contacted" ? (
+          <div className="pt-3">
+            <ContactedFilters range={range} date={pickedDate} by={by} onChange={setFilter} />
+          </div>
+        ) : (
+          <div className="h-3" />
+        )}
+
         <div className="min-h-5 px-4 pb-2 sm:px-5" aria-live="polite">
-          {toast && <p className="animate-fade-in text-sm text-emerald-700">✓ {toast}</p>}
+          {toast && (
+            <p className="animate-fade-in text-sm text-emerald-700">
+              ✓ {toast.text}{" "}
+              <button
+                onClick={() => openContacted(toast.leadId)}
+                className="pressable rounded px-1 font-medium text-emerald-800 underline underline-offset-2 hover:bg-emerald-50"
+              >
+                View
+              </button>
+            </p>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto border-t border-zinc-200 bg-white">
           {loadError && <p className="p-6 text-sm text-rose-600">{loadError}</p>}
-          {!data && !loadError && <p className="p-6 text-sm text-zinc-400">Loading…</p>}
+          {((view === "today" && !data) || (view === "contacted" && !contacted)) && !loadError && (
+            <p className="p-6 text-sm text-zinc-400">Loading…</p>
+          )}
 
-          {data && leads.length === 0 && (
+          {view === "contacted" && contacted && leads.length === 0 && (
+            <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
+              <p className="font-medium">{emptyContacted}</p>
+              <p className="mt-1 text-sm text-zinc-500">Try another date, or «All time».</p>
+            </div>
+          )}
+
+          {view === "contacted" && (
+            <ul>
+              {leads.map((lead) => (
+                <ContactedRow
+                  key={lead.id}
+                  ref={(el) => (rowRefs.current[lead.id] = el)}
+                  lead={lead}
+                  focused={lead.id === focusedId}
+                  onFocus={() => {
+                    focus(lead.id);
+                    if (window.innerWidth < 1024) setMobileDetail(true);
+                  }}
+                />
+              ))}
+            </ul>
+          )}
+
+          {view === "today" && data && leads.length === 0 && (
             <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
               <p className="text-3xl">🎉</p>
               <p className="mt-3 font-medium">You're all caught up for today</p>
@@ -293,7 +401,7 @@ export default function Inbox() {
             </div>
           )}
 
-          <ul>
+          {view === "today" && <ul>
             {leads.map((lead) => {
               const isFocused = lead.id === focusedId;
               const canLog = lead.status === "open" && !!channelOf(lead);
@@ -334,9 +442,9 @@ export default function Inbox() {
                 </LeadRow>
               );
             })}
-          </ul>
+          </ul>}
 
-          {leads.length > 0 && (
+          {view === "today" && leads.length > 0 && (
             <p className="hidden px-5 py-4 text-xs text-zinc-400 md:block">
               <kbd className="font-sans">↑ ↓</kbd> move · <kbd className="font-sans">Enter</kbd> call or email ·{" "}
               <kbd className="font-sans">1–5</kbd> log outcome · <kbd className="font-sans">C</kbd> switch phone/email

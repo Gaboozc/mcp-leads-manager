@@ -1,7 +1,7 @@
 import ContactLink from "./ContactLink.jsx";
 import { ArrowLeftIcon, MailIcon, PhoneIcon } from "./Icons.jsx";
 import StateChip from "./StateChip.jsx";
-import { byId } from "../lib/outcomes.js";
+import { byId, COLORS } from "../lib/outcomes.js";
 
 function Struck({ icon: Icon, value, reason }) {
   return (
@@ -77,11 +77,13 @@ export default function LeadPanel({ lead, loading, error, onClose }) {
               return (
                 <li key={a.id} className="relative">
                   <span className="absolute -left-[23px] top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white ring-1 ring-zinc-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
+                    <span className={`h-2 w-2 rounded-full ${COLORS[a.outcome].dot}`} />
                   </span>
                   <p className="flex items-center gap-1.5 text-sm font-medium">
-                    <Icon size={14} className="text-zinc-500" />
-                    {a.outcome_label}
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${COLORS[a.outcome].chip}`}>
+                      <Icon size={12} />
+                      {a.outcome_label}
+                    </span>
                     <span className="font-normal text-zinc-400">
                       · {a.channel === "phone" ? "call" : "email"} · {a.created_label}
                     </span>

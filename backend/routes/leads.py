@@ -10,8 +10,18 @@ bp = Blueprint("leads", __name__, url_prefix="/api/leads")
 @bp.get("")
 @jwt_required()
 def index():
-    if request.args.get("scope") == "all":
+    scope = request.args.get("scope")
+    if scope == "all":
         return jsonify(leads.list_all_leads(db()))
+    if scope == "contacted":
+        return jsonify(
+            leads.list_contacted(
+                db(),
+                date_from=request.args.get("from"),
+                date_to=request.args.get("to"),
+                by=request.args.get("by", "contact"),
+            )
+        )
     return jsonify(leads.list_today_queue(db()))
 
 

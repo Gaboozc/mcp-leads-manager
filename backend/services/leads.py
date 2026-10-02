@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from backend import timeutil
-from backend.models import ContactAttempt, Course, Lead, utcnow
+from backend.models import ContactAttempt, Course, Lead
 from backend.services.errors import Conflict, NotFound, ServiceError
 
 OUTCOMES = ("no_response", "follow_up", "interested", "not_interested", "bad_contact")
@@ -123,6 +123,24 @@ def attempt_dict(a: ContactAttempt) -> dict:
     }
 
 
+def _attempt_day(a: ContactAttempt) -> date:
+    return timeutil.to_local(a.created_at).date()
+
+
+def _last_attempt_dict(lead: Lead) -> dict | None:
+    a = _last_attempt(lead)
+    if a is None:
+        return None
+    return {
+        "outcome": a.outcome,
+        "outcome_label": OUTCOME_LABELS[a.channel][a.outcome],
+        "channel": a.channel,
+        "created_on": _attempt_day(a).isoformat(),
+        "created_label": timeutil.fmt_datetime(a.created_at),
+        "follow_up_label": timeutil.fmt_short_day(a.follow_up_on) if a.follow_up_on else None,
+    }
+
+
 def lead_summary(lead: Lead, today: date) -> dict:
     return {
         "id": lead.id,
@@ -148,6 +166,7 @@ def lead_summary(lead: Lead, today: date) -> dict:
         "group": queue_group(lead),
         "attempts_count": len(lead.attempts),
         "state_label": state_label(lead, today),
+        "last_attempt": _last_attempt_dict(lead),
     }
 
 
@@ -165,13 +184,16 @@ def list_today_queue(session: Session) -> dict:
     """Today's queue, ordered by the server: follow-ups due, then new (newest
     first), then retries (fewest attempts first)."""
     today = timeutil.today()
-    leads = session.scalars(_lead_query().where(Lead.status == "open")).all()
+    leads_all = session.scalars(_lead_query()).all()
+    leads = [l for l in leads_all if l.status == "open"]
     due = sorted((l for l in leads if is_due(l, today)), key=_sort_key)
     upcoming = [l.next_contact_on for l in leads if l.next_contact_on and l.next_contact_on > today]
     next_return = min(upcoming) if upcoming else None
+    contacted_today = sum(1 for l in leads_all if l.attempts and _attempt_day(l.attempts[-1]) == today)
     return {
         "today": today.isoformat(),
         "count": len(due),
+        "contacted_today": contacted_today,
         "leads": [lead_summary(l, today) for l in due],
         "next_return_on": next_return.isoformat() if next_return else None,
         "next_return_label": timeutil.fmt_day(next_return) if next_return else None,
@@ -182,6 +204,38 @@ def list_all_leads(session: Session) -> dict:
     today = timeutil.today()
     leads = session.scalars(_lead_query().order_by(Lead.created_at.desc())).all()
     return {"today": today.isoformat(), "count": len(leads), "leads": [lead_summary(l, today) for l in leads]}
+
+
+def list_contacted(session: Session, date_from=None, date_to=None, by: str = "contact") -> dict:
+    """Leads that were already contacted at least once (never the untouched ones).
+
+    by="contact": filter on the day of the last attempt; by="arrival": on the
+    day the lead arrived. Days are the school's days (APP_TZ). Newest contact first.
+    """
+    if by not in ("contact", "arrival"):
+        raise ServiceError("Filter by contact or arrival date.")
+    start, end = _parse_date(date_from), _parse_date(date_to)
+    if (date_from and start is None) or (date_to and end is None) or (start and end and start > end):
+        raise ServiceError("Pick a valid date range.")
+
+    today = timeutil.today()
+    leads = [l for l in session.scalars(_lead_query()).all() if l.attempts]
+
+    def day(l: Lead) -> date:
+        if by == "contact":
+            return _attempt_day(l.attempts[-1])
+        return timeutil.to_local(l.created_at).date()
+
+    leads = [l for l in leads if (start is None or day(l) >= start) and (end is None or day(l) <= end)]
+    leads.sort(key=lambda l: l.attempts[-1].created_at, reverse=True)
+    return {
+        "today": today.isoformat(),
+        "count": len(leads),
+        "leads": [lead_summary(l, today) for l in leads],
+        "from": start.isoformat() if start else None,
+        "to": end.isoformat() if end else None,
+        "by": by,
+    }
 
 
 def _load(session: Session, lead_id: int) -> Lead:
@@ -312,7 +366,7 @@ def log_contact(
         outcome=outcome,
         note=note,
         follow_up_on=when,
-        created_at=utcnow(),
+        created_at=timeutil.local_to_utc_naive(timeutil.now_local()),
     )
     session.add(attempt)
     session.flush()

@@ -46,5 +46,30 @@ export const OUTCOMES = [
   },
 ];
 
+// One colour per outcome, used for the buttons, chips, row bars and history dots,
+// so the colour alone says what happened (the word is always next to it).
+export const COLORS = {
+  no_response: { chip: "bg-zinc-100 text-zinc-700", bar: "bg-zinc-300", dot: "bg-zinc-400" },
+  follow_up: { chip: "bg-amber-50 text-amber-800", bar: "bg-amber-400", dot: "bg-amber-400" },
+  interested: { chip: "bg-emerald-50 text-emerald-800", bar: "bg-emerald-500", dot: "bg-emerald-500" },
+  not_interested: { chip: "bg-rose-50 text-rose-800", bar: "bg-rose-500", dot: "bg-rose-500" },
+  bad_contact: { chip: "bg-zinc-800 text-white", bar: "bg-zinc-800", dot: "bg-zinc-800" },
+};
+
+// "Call back · Fri, Oct 9", "No answer · back Fri, Oct 2", "Interested · closed"…
+export function outcomeSummary(lead) {
+  const a = lead.last_attempt;
+  if (!a) return null;
+  let detail;
+  if (a.outcome === "follow_up") detail = a.follow_up_label;
+  else if (lead.status === "closed") {
+    detail = { interested: "closed as a win", not_interested: "closed", no_response: "closed after 3 tries" }[a.outcome]
+      ?? "no other contact, closed";
+  } else if (a.outcome === "bad_contact") detail = `try ${lead.preferred_channel}`;
+  else if (lead.next_contact_on && !lead.in_today_queue) detail = `back ${a.follow_up_label}`;
+  else detail = "due today";
+  return { label: a.outcome_label, detail, colors: COLORS[a.outcome] };
+}
+
 export const byKey = Object.fromEntries(OUTCOMES.map((o) => [o.key, o]));
 export const byId = Object.fromEntries(OUTCOMES.map((o) => [o.id, o]));
